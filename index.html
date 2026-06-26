@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Controle de Encontros</title>
+<style>
+:root {
+--primary: #4CAF50;
+--danger: #f44336;
+--background: #121212;
+--surface: #1e1e1e;
+--text: #ffffff;
+}
+body {
+font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+background-color: var(--background);
+color: var(--text);
+margin: 0;
+padding: 20px;
+display: flex;
+flex-direction: column;
+align-items: center;
+}
+.container {
+width: 100%;
+max-width: 400px;
+background: var(--surface);
+padding: 20px;
+border-radius: 15px;
+box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+text-align: center;
+box-sizing: border-box;
+}
+h1 { margin-bottom: 10px; font-size: 24px; color: #bbb; }
+
+.status-box {
+background: #252525;
+padding: 15px;
+border-radius: 10px;
+margin: 20px 0;
+border-left: 5px solid #555;
+text-align: left;
+}
+.status-box.ativo {
+border-left-color: var(--primary);
+}
+.status-label { font-size: 14px; color: #888; display: block; margin-bottom: 5px; }
+.status-value { font-size: 18px; font-weight: bold; }
+
+.btn {
+width: 100%;
+padding: 18px;
+font-size: 18px;
+font-weight: bold;
+border: none;
+border-radius: 30px;
+cursor: pointer;
+margin: 10px 0;
+transition: transform 0.1s;
+box-sizing: border-box;
+}
+.btn:active { transform: scale(0.98); }
+.btn-start { background-color: var(--primary); color: white; }
+.btn-stop { background-color: var(--danger); color: white; display: none; }
+
+.stats {
+margin-top: 30px;
+text-align: left;
+background: #2a2a2a;
+padding: 15px;
+border-radius: 10px;
+}
+.stats h2 { font-size: 18px; margin-top: 0; border-bottom: 1px solid #444; padding-bottom: 5px; }
+.stat-row {
+display: flex;
+justify-content: space-between;
+margin: 12px 0;
+font-size: 16px;
+}
+.clear-btn {
+background: none;
+border: 1px solid #555;
+color: #888;
+padding: 8px 15px;
+border-radius: 5px;
+cursor: pointer;
+font-size: 12px;
+margin-top: 15px;
+}
+</style>
+</head>
+<body>
+
+<div class="container">
+<h1>Rastreador de Horas</h1>
+
+<div class="status-box" id="statusBox">
+<span class="status-label" id="statusLabel">Status Atual</span>
+<span class="status-value" id="statusValue">Nenhum encontro ativo</span>
+</div>
+
+<button class="btn btn-start" id="btnStart" onclick="iniciarEncontro()">INICIAR ENCONTRO</button>
+<button class="btn btn-stop" id="btnStop" onclick="finalizarEncontro()">FINALIZAR ENCONTRO</button>
+
+<div class="stats">
+<h2>Resumo do Banco de Horas</h2>
+<div class="stat-row">
+<span>Total na Semana:</span>
+<strong id="totalSemana">0h 00m</strong>
+</div>
+<div class="stat-row">
+<span>Total no Mês:</span>
+<strong id="totalMes">0h 00m</strong>
+</div>
+<center><button class="clear-btn" onclick="limparDados()">Limpar Histórico</button></center>
+</div>
+</div>
+
+<script>
+window.onload = function() {
+atualizarExibicaoTotais();
+verificarEstadoAtual();
+};
+
+// Salva o momento exato em que o botão foi clicado
+function iniciarEncontro() {
+let agora = new Date();
+localStorage.setItem('horarioInicioEncontro', agora.toISOString());
+
+verificarEstadoAtual();
+}
+
+// Calcula a diferença entre o início salvo e o momento do clique do fim
+function finalizarEncontro() {
+let inicioStr = localStorage.getItem('horarioInicioEncontro');
+
+if (inicioStr) {
+let dataInicio = new Date(inicioStr);
+let dataFim = new Date();
+let diferencaMs = dataFim - dataInicio;
+
+// Só registra se tiver durado pelo menos 1 segundo
+if (diferencaMs > 1000) {
+salvarSessaoNoHistorico(dataInicio.toISOString(), diferencaMs);
+}
+
+// Limpa o registro ativo
+localStorage.removeItem('horarioInicioEncontro');
+
+verificarEstadoAtual();
+atualizarExibicaoTotais();
+}
+}
+
+// Altera a interface de acordo com a existência ou não de um encontro ativo
+function verificarEstadoAtual() {
+let inicioStr = localStorage.getItem('horarioInicioEncontro');
+let btnStart = document.getElementById('btnStart');
+let btnStop = document.getElementById('btnStop');
+let statusBox = document.getElementById('statusBox');
+let statusLabel = document.getElementById('statusLabel');
+let statusValue = document.getElementById('statusValue');
+
+if (inicioStr) {
+let dataInicio = new Date(inicioStr);
+let horaFormatada = dataInicio.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+
+btnStart.style.display = 'none';
+btnStop.style.display = 'block';
+statusBox.classList.add('ativo');
+statusLabel.innerText = "Encontro em Andamento";
+statusValue.innerText = Iniciado às ${horaFormatada}`;
+} else {
+btnStart.style.display = 'block';
+btnStop.style.display = 'none';
+statusBox.classList.remove('ativo');
+statusLabel.innerText = "Status Atual";
+statusValue.innerText = "Nenhum encontro ativo";
+}
+}
+
+function salvarSessaoNoHistorico(dataIso, msDuracao) {
+let historico = JSON.parse(localStorage.getItem('historicoHoras')) || [];
+historico.push({
+data: dataIso,
+duracao: msDuracao
+});
+localStorage.setItem('historicoHoras', JSON.stringify(historico));
+}
+
+// Lógica de cálculo de períodos (semana e mês)
+function obterNumeroSemana(d) {
+d = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
+d.setUTCDate(d.getUTCDate() + 4 - (d.getUTCDay()||7));
+var yearStart = new Date(Date.UTC(d.getUTCFullYear(),0,1));
+return Math.ceil((((d - yearStart) / 86400000) + 1)/7);
+}
+
+function calcularTotais() {
+let historico = JSON.parse(localStorage.getItem('historicoHoras')) || [];
+let agora = new Date();
+let semanaAtual = obterNumeroSemana(agora);
+let anoAtual = agora.getFullYear();
+let mesAtual = agora.getMonth();
+
+let msSemana = 0;
+let msMes = 0;
+
+historico.forEach(sessao => {
+let dataSessao = new Date(sessao.data);
+
+if (dataSessao.getMonth() === mesAtual && dataSessao.getFullYear() === anoAtual) {
+msMes += sessao.duracao;
+}
+if (obterNumeroSemana(dataSessao) === parseInt(semanaAtual) && dataSessao.getFullYear() === anoAtual) {
+msSemana += sessao.duracao;
+}
+});
+
+return {
+semana: formatarHorasMinutos(msSemana),
+mes: formatarHorasMinutos(msMes)
+};
+}
+
+function formatarHorasMinutos(ms) {
+let totalMinutos = Math.floor(ms / 60000);
+let horas = Math.floor(totalMinutos / 60);
+let minutos = totalMinutos % 60;
+return ``${horas}h ${minutos.toString().padStart(2, '0')}m`;
+}
+
+function atualizarExibicaoTotais() {
+let totais = calcularTotais();
+document.getElementById('totalSemana').innerText = totais.semana;
+document.getElementById('totalMes').innerText = totais.mes;
+}
+
+function limparDados() {
+if(confirm("Deseja apagar permanentemente todo o histórico de horas acumuladas?")) {
+localStorage.clear();
+verificarEstadoAtual();
+atualizarExibicaoTotais();
+}
+}
+</script>
+
+</body>
+</html>
